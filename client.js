@@ -1,66 +1,52 @@
-async function printData(){
-  const response=await fetch("http://localhost:3000/users");
-  const data=await response.json();
-  console.log(data);
-}
-// printData();
 
-
-
-//Fetch the todos for first 5 users concurrently.
-function delayforOne(){
-  return new Promise(resolve=>{
-    setTimeout(resolve,1000);
-  })
+function waitOneSecond() {
+  return new Promise((resolve) => setTimeout(resolve, 1000));
 }
 
-async function fetchFive() {
-  const response = await fetch("http://localhost:3000/todos");
-  const data = await response.json();
+async function fetchTodosInChunks() {
+  // Get all users
+  const response = await fetch("http://localhost:3000/users");
+  const result = await response.json();
+  const users = result.users;
 
-  const todos = data.todos;
-  // console.log(todos)
-  const length = todos.length;
+  const userIds = users.map((user) => user.id);
 
-  for (let i = 0; i < length; i += 5) {
-    const chunk = todos.slice(i, i + 5);
-    console.log('Todos chunk:', chunk);
+  const allFetchedTodos = []; 
+  for (let i = 0; i < userIds.length; i += 5) {
+    const chunk = userIds.slice(i, i + 5);
 
-    if(i+5<length){
-      await delayforOne();
+    // Fetch todos for each user in the chunk
+    const todosResponses = await Promise.all(
+      chunk.map((id) =>
+        fetch(`http://localhost:3000/todos?user_id=${id}`).then((res) =>
+          res.json()
+        )
+      )
+    );
+
+    const chunkTodos = todosResponses.map((res) => res.todos).flat();
+    allFetchedTodos.push(...chunkTodos); // Collect all todos
+
+    console.log("Users:", chunk);
+    console.log("Todos:", chunkTodos);
+
+    if (i + 5 < userIds.length) {
+      await waitOneSecond();
     }
   }
+console.log(allFetchedTodos);
+  
+  // Final answer
+  const finalAnswer = users.map((user) => {
+    const completedCount = allFetchedTodos.filter((todo) =>  todo.isCompleted).length;
+    return {
+      id: user.id,
+      name: user.name,
+      numTodosCompleted: completedCount,
+    };
+  });
 
+  console.log("Users :", finalAnswer);
 }
 
-// fetchFive();
-
-
-//Once todos for all users are fetched, calculate how many todos are completed for each user and print the result in the following format:
-
-async function countTodosByUser() {
-  const response = await fetch("http://localhost:3000/todos");
-  const data = await response.json();
-
-  const todos = data.todos;
-
-  const finalAns = {}; 
-
-  for (const todo of todos) {
-    // const userId = Number(todo.id)%10;
-    // console.log(userId)
-
-    if (!finalAns[userId]) {
-      finalAns[userId] = 0;
-    }
-
-    if (todo.isCompleted) {
-      finalAns[userId]++;
-    }
-  }
-
-
-}
-
-countTodosByUser();
-
+fetchTodosInChunks();
