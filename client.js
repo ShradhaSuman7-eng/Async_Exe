@@ -9,6 +9,8 @@ async function fetchTodosInChunks() {
   const result = await response.json();
   const users = result.users;
 
+  
+
   const userIds = users.map((user) => user.id);
 
   const allFetchedTodos = []; 
@@ -34,17 +36,21 @@ async function fetchTodosInChunks() {
       await waitOneSecond();
     }
   }
-console.log(allFetchedTodos);
-  
+
+
   // Final answer
   const finalAnswer = users.map((user) => {
-    const completedCount = allFetchedTodos.filter((todo) =>  todo.isCompleted).length;
+    const todosForUser = allFetchedTodos.filter(
+      todo => parseInt(todo.id.split('-')[1]) === user.id && todo.isCompleted
+    ).length;
+  
     return {
       id: user.id,
       name: user.name,
-      numTodosCompleted: completedCount,
+      numTodosCompleted: todosForUser,
     };
   });
+  
 
   console.log("Users :", finalAnswer);
 }
